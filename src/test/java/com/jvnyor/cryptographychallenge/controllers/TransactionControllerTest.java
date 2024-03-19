@@ -8,14 +8,20 @@ import com.jvnyor.cryptographychallenge.services.TransactionService;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -71,6 +77,30 @@ class TransactionControllerTest {
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponse)));
     }
 
+    @CsvSource(value = {
+            "null, test, 1",
+            "'', test, 1",
+            "test, null, 1",
+            "test, '', 1",
+            "test, test, -1"
+    })
+    @ParameterizedTest
+    void givenTransactionRequestWithInvalidValues_whenCreateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
+
+        var result = mockMvc.perform(
+                post(URL_TEMPLATE)
+                        .content(objectMapper.writeValueAsString(new TransactionRequest(userDocument.equals("null") ? null : userDocument, creditCardToken.equals("null") ? null : creditCardToken, value)))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isBadRequest());
+        result.andExpect(jsonPath("$.message").exists());
+        result.andExpect(jsonPath("$.path").value(URL_TEMPLATE));
+        result.andExpect(jsonPath("$.className").value(MethodArgumentNotValidException.class.getSimpleName()));
+        result.andExpect(jsonPath("$.status").value(400));
+        result.andExpect(jsonPath("$.timestamp").exists());
+    }
+
     @Test
     void givenTransactionRequest_whenCreateTransaction_butDatabaseRejectsOperation_thenExceptionIsThrown() throws Exception {
         var databaseException = new RuntimeException("Database error");
@@ -106,6 +136,31 @@ class TransactionControllerTest {
 
         result.andExpect(status().isOk());
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponse)));
+    }
+
+    @CsvSource(value = {
+            "null, test, 1",
+            "'', test, 1",
+            "test, null, 1",
+            "test, '', 1",
+            "test, test, -1"
+    })
+    @ParameterizedTest
+    void givenExistingIdAndTransactionRequestWithInvalidValues_whenUpdateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
+
+        var url = URL_TEMPLATE + "/1";
+        var result = mockMvc.perform(
+                put(url)
+                        .content(objectMapper.writeValueAsString(new TransactionRequest(userDocument.equals("null") ? null : userDocument, creditCardToken.equals("null") ? null : creditCardToken, value)))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isBadRequest());
+        result.andExpect(jsonPath("$.message").exists());
+        result.andExpect(jsonPath("$.path").value(url));
+        result.andExpect(jsonPath("$.className").value(MethodArgumentNotValidException.class.getSimpleName()));
+        result.andExpect(jsonPath("$.status").value(400));
+        result.andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
@@ -208,11 +263,67 @@ class TransactionControllerTest {
     }
 
     @Test
-    void getTransaction() {
+    void givenExistingId_whenGetTransaction_thenReturnTransactionResponse() throws Exception {
+        when(transactionService.getTransaction(anyLong())).thenReturn(transactionResponse);
+
+        var url = URL_TEMPLATE + "/1";
+        var result = mockMvc.perform(
+                get(url)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isOk());
+        result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponse)));
     }
 
     @Test
-    void getTransactions() {
+    void givenNonExistentId_whenGetTransaction_thenExceptionIsThrown() throws Exception {
+        var transactionNotFoundException = new TransactionNotFoundException("Transaction with id 1 not found");
+        when(transactionService.getTransaction(anyLong())).thenThrow(transactionNotFoundException);
+
+        var url = URL_TEMPLATE + "/1";
+        var result = mockMvc.perform(
+                get(url)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        var errorResponseMock = getErrorResponseMock(transactionNotFoundException, url, 404);
+
+        result.andExpect(status().isNotFound());
+        result.andExpect(jsonPath("$.message").value(errorResponseMock.message()));
+        result.andExpect(jsonPath("$.path").value(errorResponseMock.path()));
+        result.andExpect(jsonPath("$.className").value(errorResponseMock.className()));
+        result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
+        result.andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void givenParameterObjectPageableRequest_whenGetTransactions_thenReturnPageOfTransactionResponse() throws Exception {
+        var transactionResponsePage = new PageImpl<>(Collections.singletonList(transactionResponse));
+        when(transactionService.getTransactions(any(PageRequest.class))).thenReturn(transactionResponsePage);
+
+        var url = URL_TEMPLATE + "?page=0&size=20";
+        var result = mockMvc.perform(
+                get(url)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isOk());
+        result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponsePage)));
+    }
+
+    @Test
+    void givenParameterObjectPageableRequestWithoutParams_whenGetTransactions_thenReturnPageOfTransactionResponse() throws Exception {
+        var transactionResponsePage = new PageImpl<>(Collections.singletonList(transactionResponse));
+        when(transactionService.getTransactions(any(PageRequest.class))).thenReturn(transactionResponsePage);
+
+        var result = mockMvc.perform(
+                get(URL_TEMPLATE)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isOk());
+        result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponsePage)));
     }
 
     private ErrorResponse getErrorResponseMock(Exception exception, String path, int status) {
