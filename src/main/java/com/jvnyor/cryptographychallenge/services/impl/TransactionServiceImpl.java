@@ -10,7 +10,9 @@ import org.jasypt.util.text.AES256TextEncryptor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 @Service
 public class TransactionServiceImpl implements TransactionService {
 
@@ -49,6 +51,7 @@ public class TransactionServiceImpl implements TransactionService {
         transactionRepository.delete(getById(id));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public TransactionResponse getTransaction(long id) {
         return getTransactionResponse(getById(id));
@@ -59,6 +62,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction with id %d not found".formatted(id)));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public Page<TransactionResponse> getTransactions(Pageable pageable) {
         var transactionsPage = transactionRepository.findAll(pageable);
