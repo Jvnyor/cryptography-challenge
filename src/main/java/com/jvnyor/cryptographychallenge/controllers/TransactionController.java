@@ -7,10 +7,10 @@ import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @Validated
 @RestController
@@ -25,7 +25,14 @@ public class TransactionController {
 
     @PostMapping
     public ResponseEntity<TransactionResponse> createTransaction(@RequestBody @Valid TransactionRequest transactionRequest) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionService.createTransaction(transactionRequest));
+        var transaction = transactionService.createTransaction(transactionRequest);
+        return ResponseEntity
+                .created(ServletUriComponentsBuilder
+                        .fromCurrentRequest()
+                        .path("/{id})")
+                        .buildAndExpand(transaction.id())
+                        .toUri())
+                .body(transaction);
     }
 
     @PutMapping("/{id}")

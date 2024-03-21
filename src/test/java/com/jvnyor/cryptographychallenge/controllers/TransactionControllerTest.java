@@ -23,12 +23,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TransactionController.class)
 class TransactionControllerTest {
@@ -74,6 +74,7 @@ class TransactionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isCreated());
+        result.andExpect(header().string("Location", containsString("/v1/transactions/1")));
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponse)));
     }
 
