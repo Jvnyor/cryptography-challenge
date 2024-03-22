@@ -9,7 +9,9 @@ import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundE
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
@@ -78,19 +81,13 @@ class TransactionControllerTest {
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponse)));
     }
 
-    @CsvSource(value = {
-            "null, test, 1",
-            "'', test, 1",
-            "test, null, 1",
-            "test, '', 1",
-            "test, test, -1"
-    })
+    @MethodSource("provideParametersForTest")
     @ParameterizedTest
     void givenTransactionRequestWithInvalidValues_whenCreateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
 
         var result = mockMvc.perform(
                 post(URL_TEMPLATE)
-                        .content(objectMapper.writeValueAsString(new TransactionRequest(userDocument.equals("null") ? null : userDocument, creditCardToken.equals("null") ? null : creditCardToken, value)))
+                        .content(objectMapper.writeValueAsString(new TransactionRequest(userDocument, creditCardToken, value)))
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -100,6 +97,20 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.className").value(MethodArgumentNotValidException.class.getSimpleName()));
         result.andExpect(jsonPath("$.status").value(400));
         result.andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    static Stream<Arguments> provideParametersForTest() {
+        var validCreditCardToken = "validCreditCardToken";
+        var validUserDocument = "validUserDocument";
+        int validValue = 1;
+        int invalidValue = -1;
+        return Stream.of(
+                Arguments.of(null, validCreditCardToken, validValue),
+                Arguments.of("", validCreditCardToken, validValue),
+                Arguments.of(validUserDocument, null, validValue),
+                Arguments.of(validUserDocument, "", validValue),
+                Arguments.of(validUserDocument, validCreditCardToken, invalidValue)
+        );
     }
 
     @Test
