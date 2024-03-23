@@ -4,10 +4,10 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 
-public record ErrorResponse(
+public record ErrorResponseDTO(
         String message,
         String path,
-        String className,
+        String exceptionName,
         int status,
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         LocalDateTime timestamp

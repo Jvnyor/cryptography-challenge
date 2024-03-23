@@ -3,7 +3,6 @@ package com.jvnyor.cryptographychallenge.entities;
 import jakarta.persistence.*;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 @Entity
 @Table
@@ -25,12 +24,6 @@ public class Transaction implements Serializable {
     public Transaction() {
     }
 
-    public Transaction(String userDocument, String creditCardToken, double value) {
-        this.userDocument = userDocument;
-        this.creditCardToken = creditCardToken;
-        this.value = value;
-    }
-
     public Transaction(Long id, String userDocument, String creditCardToken, double value) {
         this.id = id;
         this.userDocument = userDocument;
@@ -40,10 +33,6 @@ public class Transaction implements Serializable {
 
     public Long getId() {
         return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getUserDocument() {
@@ -68,19 +57,6 @@ public class Transaction implements Serializable {
 
     public void setValue(double value) {
         this.value = value;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Transaction transaction = (Transaction) o;
-        return Objects.equals(id, transaction.id) && Objects.equals(userDocument, transaction.userDocument) && Objects.equals(creditCardToken, transaction.creditCardToken);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, userDocument, creditCardToken);
     }
 
     @Override

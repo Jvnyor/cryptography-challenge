@@ -1,7 +1,8 @@
 package com.jvnyor.cryptographychallenge.controllers;
 
-import com.jvnyor.cryptographychallenge.dtos.TransactionRequest;
-import com.jvnyor.cryptographychallenge.dtos.TransactionResponse;
+import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionResponseDTO;
 import com.jvnyor.cryptographychallenge.services.TransactionService;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
@@ -24,8 +25,8 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<TransactionResponse> createTransaction(@RequestBody @Valid TransactionRequest transactionRequest) {
-        var transaction = transactionService.createTransaction(transactionRequest);
+    public ResponseEntity<TransactionResponseDTO> createTransaction(@RequestBody @Valid TransactionCreateDTO transactionCreateDTO) {
+        var transaction = transactionService.createTransaction(transactionCreateDTO);
         return ResponseEntity
                 .created(ServletUriComponentsBuilder
                         .fromCurrentRequest()
@@ -36,8 +37,8 @@ public class TransactionController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TransactionResponse> updateTransaction(@PathVariable Long id, @RequestBody @Valid TransactionRequest transactionRequest) {
-        return ResponseEntity.ok(transactionService.updateTransaction(id, transactionRequest));
+    public ResponseEntity<TransactionResponseDTO> updateTransaction(@PathVariable Long id, @RequestBody @Valid TransactionUpdateDTO transactionUpdateDTO) {
+        return ResponseEntity.ok(transactionService.updateTransaction(id, transactionUpdateDTO));
     }
 
     @DeleteMapping("/{id}")
@@ -47,12 +48,12 @@ public class TransactionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TransactionResponse> getTransaction(@PathVariable Long id) {
+    public ResponseEntity<TransactionResponseDTO> getTransaction(@PathVariable Long id) {
         return ResponseEntity.ok(transactionService.getTransaction(id));
     }
 
     @GetMapping
-    public ResponseEntity<Page<TransactionResponse>> getTransactions(@ParameterObject Pageable pageable) {
+    public ResponseEntity<Page<TransactionResponseDTO>> getTransactions(@ParameterObject Pageable pageable) {
         return ResponseEntity.ok(transactionService.getTransactions(pageable));
     }
 }

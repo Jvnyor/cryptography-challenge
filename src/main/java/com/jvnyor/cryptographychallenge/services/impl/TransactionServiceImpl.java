@@ -1,7 +1,8 @@
 package com.jvnyor.cryptographychallenge.services.impl;
 
-import com.jvnyor.cryptographychallenge.dtos.TransactionRequest;
-import com.jvnyor.cryptographychallenge.dtos.TransactionResponse;
+import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionResponseDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
 import com.jvnyor.cryptographychallenge.entities.Transaction;
 import com.jvnyor.cryptographychallenge.repositories.TransactionRepository;
 import com.jvnyor.cryptographychallenge.services.TransactionService;
@@ -11,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Transactional
 @Service
@@ -26,65 +29,97 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public TransactionResponse createTransaction(TransactionRequest transactionRequest) {
+    public TransactionResponseDTO createTransaction(TransactionCreateDTO transactionCreateDTO) {
         var transaction = transactionRepository.save(
                 new Transaction(
-                        getEncryptedValue(transactionRequest.userDocument()),
-                        getEncryptedValue(transactionRequest.creditCardToken()),
-                        transactionRequest.value()
+                        null,
+                        textEncryptor.encrypt(transactionCreateDTO.userDocument()),
+                        textEncryptor.encrypt(transactionCreateDTO.creditCardToken()),
+                        transactionCreateDTO.value()
                 )
         );
         return getTransactionResponse(transaction);
     }
 
     @Override
-    public TransactionResponse updateTransaction(long id, TransactionRequest transactionRequest) {
-        var transaction = getById(id);
-        transaction.setUserDocument(getEncryptedValue(transactionRequest.userDocument()));
-        transaction.setCreditCardToken(getEncryptedValue(transactionRequest.creditCardToken()));
-        transaction.setValue(transactionRequest.value());
-        return getTransactionResponse(transactionRepository.save(transaction));
+    public TransactionResponseDTO updateTransaction(long id, TransactionUpdateDTO transactionUpdateDTO) {
+        var transaction = findById(id);
+
+        var updated = updateTransactionFields(transactionUpdateDTO, transaction);
+
+        if (updated) {
+            transaction = transactionRepository.save(transaction);
+        }
+
+        return getTransactionResponse(transaction);
+    }
+
+    private boolean updateTransactionFields(TransactionUpdateDTO transactionUpdateDTO, Transaction transaction) {
+        var updated = false;
+
+        var userDocument = transactionUpdateDTO.userDocument();
+        if (userDocument != null) {
+            var encryptedUserDocument = textEncryptor.encrypt(userDocument);
+            if (!encryptedUserDocument.equals(transaction.getUserDocument())) {
+                transaction.setUserDocument(encryptedUserDocument);
+                updated = true;
+            }
+        }
+
+        var creditCardToken = transactionUpdateDTO.creditCardToken();
+        if (creditCardToken != null) {
+            var encryptCreditCardToken = textEncryptor.encrypt(creditCardToken);
+            if (!encryptCreditCardToken.equals(transaction.getCreditCardToken())) {
+                transaction.setCreditCardToken(encryptCreditCardToken);
+                updated = true;
+            }
+        }
+
+        var value = transactionUpdateDTO.value();
+        if (value != null && value != transaction.getValue()) {
+            transaction.setValue(value);
+            updated = true;
+        }
+
+        return updated;
     }
 
     @Override
     public void deleteTransaction(long id) {
-        transactionRepository.delete(getById(id));
+        transactionRepository.deleteByID(existsById(id));
     }
 
     @Transactional(readOnly = true)
     @Override
-    public TransactionResponse getTransaction(long id) {
-        return getTransactionResponse(getById(id));
+    public TransactionResponseDTO getTransaction(long id) {
+        return getTransactionResponse(findById(id));
     }
 
-    private Transaction getById(long id) {
+    private Transaction findById(long id) {
         return transactionRepository.findById(id)
-                .orElseThrow(() -> new TransactionNotFoundException("Transaction with id %d not found".formatted(id)));
+                .orElseThrow(() -> new TransactionNotFoundException(id));
+    }
+
+    private long existsById(long id) {
+        return Optional.of(id)
+                .filter(transactionRepository::existsById)
+                .orElseThrow(() -> new TransactionNotFoundException(id));
     }
 
     @Transactional(readOnly = true)
     @Override
-    public Page<TransactionResponse> getTransactions(Pageable pageable) {
-        var transactionsPage = transactionRepository.findAll(pageable);
-        if (transactionsPage.hasContent()) {
-            return transactionsPage.map(this::getTransactionResponse);
-        }
-        return Page.empty();
+    public Page<TransactionResponseDTO> getTransactions(Pageable pageable) {
+        return Optional.of(transactionRepository.findAll(pageable))
+                .filter(Page::hasContent)
+                .map(page -> page.map(this::getTransactionResponse))
+                .orElse(Page.empty());
     }
 
-    private String getEncryptedValue(String value) {
-        return textEncryptor.encrypt(value);
-    }
-
-    private String getDecryptedValue(String value) {
-        return textEncryptor.decrypt(value);
-    }
-
-    private TransactionResponse getTransactionResponse(Transaction transaction) {
-        return new TransactionResponse(
+    private TransactionResponseDTO getTransactionResponse(Transaction transaction) {
+        return new TransactionResponseDTO(
                 transaction.getId(),
-                getDecryptedValue(transaction.getUserDocument()),
-                getDecryptedValue(transaction.getCreditCardToken()),
+                textEncryptor.decrypt(transaction.getUserDocument()),
+                textEncryptor.decrypt(transaction.getCreditCardToken()),
                 transaction.getValue()
         );
     }

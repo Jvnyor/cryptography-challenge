@@ -1,0 +1,1 @@
+INSERT INTO public.transaction (user_document, credit_card_token, "value") VALUES ('document1', 'token1', 1);

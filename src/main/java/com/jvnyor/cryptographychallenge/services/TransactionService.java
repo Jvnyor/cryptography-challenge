@@ -1,14 +1,15 @@
 package com.jvnyor.cryptographychallenge.services;
 
-import com.jvnyor.cryptographychallenge.dtos.TransactionRequest;
-import com.jvnyor.cryptographychallenge.dtos.TransactionResponse;
+import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface TransactionService {
-    TransactionResponse createTransaction(TransactionRequest transactionRequest);
-    TransactionResponse updateTransaction(long id, TransactionRequest transactionRequest);
+    TransactionResponseDTO createTransaction(TransactionCreateDTO transactionCreateDTO);
+    TransactionResponseDTO updateTransaction(long id, TransactionUpdateDTO transactionUpdateDTO);
     void deleteTransaction(long id);
-    TransactionResponse getTransaction(long id);
-    Page<TransactionResponse> getTransactions(Pageable pageable);
+    TransactionResponseDTO getTransaction(long id);
+    Page<TransactionResponseDTO> getTransactions(Pageable pageable);
 }
