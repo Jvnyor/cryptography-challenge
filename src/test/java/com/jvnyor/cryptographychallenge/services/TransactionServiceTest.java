@@ -250,12 +250,12 @@ class TransactionServiceTest {
     @Test
     void givenExistingId_whenDeleteTransaction_thenNoExceptionIsThrown() {
         when(transactionRepository.existsById(anyLong())).thenReturn(true);
-        doNothing().when(transactionRepository).deleteById(anyLong());
+        doNothing().when(transactionRepository).deleteByID(anyLong());
 
         assertDoesNotThrow(() -> transactionService.deleteTransaction(1L));
 
         verify(transactionRepository, times(1)).existsById(anyLong());
-        verify(transactionRepository, times(1)).deleteById(anyLong());
+        verify(transactionRepository, times(1)).deleteByID(anyLong());
     }
 
     @Test
@@ -265,7 +265,7 @@ class TransactionServiceTest {
         assertThrows(TransactionNotFoundException.class, () -> transactionService.deleteTransaction(1L), TRANSACTION_WITH_ID_1_NOT_FOUND);
 
         verify(transactionRepository, times(1)).existsById(anyLong());
-        verify(transactionRepository, times(0)).deleteById(anyLong());
+        verify(transactionRepository, times(0)).deleteByID(anyLong());
     }
 
     @Test
