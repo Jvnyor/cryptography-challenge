@@ -58,21 +58,15 @@ public class TransactionServiceImpl implements TransactionService {
         var updated = false;
 
         var userDocument = transactionUpdateDTO.userDocument();
-        if (userDocument != null) {
-            var encryptedUserDocument = textEncryptor.encrypt(userDocument);
-            if (!encryptedUserDocument.equals(transaction.getUserDocument())) {
-                transaction.setUserDocument(encryptedUserDocument);
-                updated = true;
-            }
+        if (userDocument != null && (!userDocument.equals(textEncryptor.decrypt(transaction.getUserDocument())))) {
+            transaction.setUserDocument(textEncryptor.encrypt(userDocument));
+            updated = true;
         }
 
         var creditCardToken = transactionUpdateDTO.creditCardToken();
-        if (creditCardToken != null) {
-            var encryptCreditCardToken = textEncryptor.encrypt(creditCardToken);
-            if (!encryptCreditCardToken.equals(transaction.getCreditCardToken())) {
-                transaction.setCreditCardToken(encryptCreditCardToken);
-                updated = true;
-            }
+        if (creditCardToken != null && (!creditCardToken.equals(textEncryptor.decrypt(transaction.getCreditCardToken())))) {
+            transaction.setCreditCardToken(textEncryptor.encrypt(creditCardToken));
+            updated = true;
         }
 
         var value = transactionUpdateDTO.value();

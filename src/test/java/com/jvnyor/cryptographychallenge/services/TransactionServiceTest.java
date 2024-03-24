@@ -124,7 +124,7 @@ class TransactionServiceTest {
         verify(transactionRepository, times(1)).findById(anyLong());
         verify(textEncryptor, times(2)).encrypt(anyString());
         verify(transactionRepository, times(1)).save(any(Transaction.class));
-        verify(textEncryptor, times(2)).decrypt(anyString());
+        verify(textEncryptor, times(4)).decrypt(anyString());
     }
 
     @Test
@@ -150,10 +150,10 @@ class TransactionServiceTest {
     @Test
     void givenExistingIdAndTransactionUpdateDTOWithSameOfExistingTransactionValues_whenUpdateTransaction_thenReturnTransactionResponse_butWithoutPersistenceInvocation() {
         when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(transaction));
-        when(textEncryptor.encrypt(anyString())).thenReturn(ENCRYPTED_MESSAGE_NOT_UPDATED);
+        when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
         when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
 
-        var transactionResponse = transactionService.updateTransaction(1L, new TransactionUpdateDTO(transaction.getUserDocument(), transaction.getCreditCardToken(), transaction.getValue()));
+        var transactionResponse = transactionService.updateTransaction(1L, new TransactionUpdateDTO(DECRYPTED_MESSAGE, DECRYPTED_MESSAGE, transaction.getValue()));
 
         assertAll("Return transaction response with decrypted fields",
                 () -> assertEquals(transaction.getId(), transactionResponse.id()),
@@ -163,9 +163,9 @@ class TransactionServiceTest {
         );
 
         verify(transactionRepository, times(1)).findById(anyLong());
-        verify(textEncryptor, times(2)).encrypt(anyString());
+        verify(textEncryptor, times(0)).encrypt(anyString());
         verify(transactionRepository, times(0)).save(any(Transaction.class));
-        verify(textEncryptor, times(2)).decrypt(anyString());
+        verify(textEncryptor, times(4)).decrypt(anyString());
     }
 
     @MethodSource("provideParametersForTestWithUserDocumentAndCreditCardTokenFieldsValidation")
@@ -188,7 +188,7 @@ class TransactionServiceTest {
         verify(transactionRepository, times(1)).findById(anyLong());
         verify(textEncryptor, times(1)).encrypt(anyString());
         verify(transactionRepository, times(1)).save(any(Transaction.class));
-        verify(textEncryptor, times(2)).decrypt(anyString());
+        verify(textEncryptor, times(3)).decrypt(anyString());
     }
 
     @Test
