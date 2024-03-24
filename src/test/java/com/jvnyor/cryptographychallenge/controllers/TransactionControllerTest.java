@@ -6,6 +6,7 @@ import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
 import com.jvnyor.cryptographychallenge.dtos.TransactionResponseDTO;
 import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
 import com.jvnyor.cryptographychallenge.services.TransactionService;
+import com.jvnyor.cryptographychallenge.services.exceptions.TransactionDeletionException;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -261,6 +262,27 @@ class TransactionControllerTest {
         var errorResponseMock = getErrorResponseMock(transactionNotFoundException, url, 404);
 
         result.andExpect(status().isNotFound());
+        result.andExpect(jsonPath("$.message").value(errorResponseMock.message()));
+        result.andExpect(jsonPath("$.path").value(errorResponseMock.path()));
+        result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));
+        result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
+        result.andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void givenExistingId_whenDeleteTransaction_butZeroRowsAffected_thenExceptionIsThrown() throws Exception {
+        var transactionDeletionException = new TransactionDeletionException(1L);
+        doThrow(transactionDeletionException).when(transactionService).deleteTransaction(anyLong());
+
+        var url = URL_TEMPLATE + "/1";
+        var result = mockMvc.perform(
+                delete(url)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        var errorResponseMock = getErrorResponseMock(transactionDeletionException, url, 500);
+
+        result.andExpect(status().isInternalServerError());
         result.andExpect(jsonPath("$.message").value(errorResponseMock.message()));
         result.andExpect(jsonPath("$.path").value(errorResponseMock.path()));
         result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));

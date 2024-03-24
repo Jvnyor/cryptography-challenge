@@ -13,5 +13,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Transactional
     @Modifying
     @Query("delete from Transaction t where t.id = ?1")
-    void deleteByID(long id);
+    int deleteByID(long id);
 }

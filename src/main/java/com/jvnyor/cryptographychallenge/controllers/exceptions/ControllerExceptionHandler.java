@@ -1,6 +1,7 @@
 package com.jvnyor.cryptographychallenge.controllers.exceptions;
 
 import com.jvnyor.cryptographychallenge.controllers.exceptions.dtos.ErrorResponseDTO;
+import com.jvnyor.cryptographychallenge.services.exceptions.TransactionDeletionException;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -47,6 +48,21 @@ public class ControllerExceptionHandler {
                         request.getRequestURI(),
                         exception.getClass().getSimpleName(),
                         notFound.value(),
+                        LocalDateTime.now())
+                );
+    }
+
+    @ExceptionHandler(TransactionDeletionException.class)
+    private ResponseEntity<Object> handleTransactionDeletionException(TransactionDeletionException exception, HttpServletRequest request) {
+
+        final var internalServerError = HttpStatus.INTERNAL_SERVER_ERROR;
+        return ResponseEntity
+                .status(internalServerError)
+                .body(new ErrorResponseDTO(
+                        exception.getMessage(),
+                        request.getRequestURI(),
+                        exception.getClass().getSimpleName(),
+                        internalServerError.value(),
                         LocalDateTime.now())
                 );
     }

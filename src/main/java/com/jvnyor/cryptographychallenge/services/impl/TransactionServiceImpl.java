@@ -6,6 +6,7 @@ import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
 import com.jvnyor.cryptographychallenge.entities.Transaction;
 import com.jvnyor.cryptographychallenge.repositories.TransactionRepository;
 import com.jvnyor.cryptographychallenge.services.TransactionService;
+import com.jvnyor.cryptographychallenge.services.exceptions.TransactionDeletionException;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundException;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.springframework.data.domain.Page;
@@ -80,7 +81,10 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public void deleteTransaction(long id) {
-        transactionRepository.deleteByID(existsById(id));
+        int deleteByID = transactionRepository.deleteByID(existsById(id));
+        if (deleteByID == 0) {
+            throw new TransactionDeletionException(id);
+        }
     }
 
     @Transactional(readOnly = true)

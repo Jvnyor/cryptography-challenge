@@ -4,6 +4,7 @@ import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
 import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
 import com.jvnyor.cryptographychallenge.entities.Transaction;
 import com.jvnyor.cryptographychallenge.repositories.TransactionRepository;
+import com.jvnyor.cryptographychallenge.services.exceptions.TransactionDeletionException;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundException;
 import com.jvnyor.cryptographychallenge.services.impl.TransactionServiceImpl;
 import org.jasypt.util.text.AES256TextEncryptor;
@@ -39,6 +40,8 @@ class TransactionServiceTest {
     public static final String ENCRYPTED_MESSAGE_UPDATED = ENCRYPTED_MESSAGE_NOT_UPDATED + "1";
 
     private static final String TRANSACTION_WITH_ID_1_NOT_FOUND = "Transaction with id 1 not found";
+
+    private static final String TRANSACTION_DELETE_ERROR_WITH_ID_1 = "Failed to delete transaction with id: 1";
 
     @Mock
     private TransactionRepository transactionRepository;
@@ -250,7 +253,7 @@ class TransactionServiceTest {
     @Test
     void givenExistingId_whenDeleteTransaction_thenNoExceptionIsThrown() {
         when(transactionRepository.existsById(anyLong())).thenReturn(true);
-        doNothing().when(transactionRepository).deleteByID(anyLong());
+        when(transactionRepository.deleteByID(anyLong())).thenReturn(1);
 
         assertDoesNotThrow(() -> transactionService.deleteTransaction(1L));
 
@@ -266,6 +269,17 @@ class TransactionServiceTest {
 
         verify(transactionRepository, times(1)).existsById(anyLong());
         verify(transactionRepository, times(0)).deleteByID(anyLong());
+    }
+
+    @Test
+    void givenExistingId_whenDeleteTransaction_butZeroRowsAffected_thenExceptionIsThrown() {
+        when(transactionRepository.existsById(anyLong())).thenReturn(true);
+        when(transactionRepository.deleteByID(anyLong())).thenReturn(0);
+
+        assertThrows(TransactionDeletionException.class, () -> transactionService.deleteTransaction(1L), TRANSACTION_DELETE_ERROR_WITH_ID_1);
+
+        verify(transactionRepository, times(1)).existsById(anyLong());
+        verify(transactionRepository, times(1)).deleteByID(anyLong());
     }
 
     @Test
