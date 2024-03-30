@@ -44,15 +44,12 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public TransactionResponseDTO updateTransaction(long id, TransactionUpdateDTO transactionUpdateDTO) {
-        var transaction = findById(id);
-
-        var updatedTransaction = updateTransactionFieldsIfChanged(transactionUpdateDTO, transaction);
-
-        if (updatedTransaction.isPresent()) {
-            transaction = transactionRepository.save(updatedTransaction.get());
-        }
-
-        return getTransactionResponse(transaction);
+        var existingTransaction = findById(id);
+        return getTransactionResponse(
+                updateTransactionFieldsIfChanged(transactionUpdateDTO, existingTransaction)
+                        .map(transactionRepository::save)
+                        .orElse(existingTransaction)
+        );
     }
 
     private Optional<Transaction> updateTransactionFieldsIfChanged(TransactionUpdateDTO transactionUpdateDTO, Transaction transaction) {
