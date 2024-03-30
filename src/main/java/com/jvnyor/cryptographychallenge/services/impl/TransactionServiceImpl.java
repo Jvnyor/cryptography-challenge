@@ -46,16 +46,16 @@ public class TransactionServiceImpl implements TransactionService {
     public TransactionResponseDTO updateTransaction(long id, TransactionUpdateDTO transactionUpdateDTO) {
         var transaction = findById(id);
 
-        var updated = updateTransactionFields(transactionUpdateDTO, transaction);
+        var updatedTransaction = updateTransactionFieldsIfChanged(transactionUpdateDTO, transaction);
 
-        if (updated) {
-            transaction = transactionRepository.save(transaction);
+        if (updatedTransaction.isPresent()) {
+            transaction = transactionRepository.save(updatedTransaction.get());
         }
 
         return getTransactionResponse(transaction);
     }
 
-    private boolean updateTransactionFields(TransactionUpdateDTO transactionUpdateDTO, Transaction transaction) {
+    private Optional<Transaction> updateTransactionFieldsIfChanged(TransactionUpdateDTO transactionUpdateDTO, Transaction transaction) {
         var updated = false;
 
         var userDocument = transactionUpdateDTO.userDocument();
@@ -76,7 +76,7 @@ public class TransactionServiceImpl implements TransactionService {
             updated = true;
         }
 
-        return updated;
+        return updated ? Optional.of(transaction) : Optional.empty();
     }
 
     @Override
