@@ -67,7 +67,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void givenTransactionCreateDTO_whenCreateTransaction_thenReturnTransactionResponse() {
+    void givenTransactionRequestDTO_whenCreateTransaction_thenReturnTransactionResponse() {
         when(textEncryptor.encrypt(anyString())).thenReturn(ENCRYPTED_MESSAGE_NOT_UPDATED);
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
         when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
@@ -97,7 +97,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void givenExistingIdAndTransactionUpdateDTO_whenUpdateTransaction_thenReturnTransactionResponse() {
+    void givenExistingIdAndTransactionRequestDTO_whenUpdateTransaction_thenReturnTransactionResponse() {
         when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(transaction));
         when(textEncryptor.encrypt(anyString())).thenReturn(ENCRYPTED_MESSAGE_UPDATED);
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
@@ -119,7 +119,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void givenNonExistentIdAndTransactionUpdateDTO_whenUpdateTransaction_thenExceptionIsThrown() {
+    void givenNonExistentIdAndTransactionRequestDTO_whenUpdateTransaction_thenExceptionIsThrown() {
         when(transactionRepository.findById(anyLong())).thenReturn(Optional.empty());
 
         assertThrows(TransactionNotFoundException.class, () -> transactionService.updateTransaction(1L, transactionRequestDTO), TRANSACTION_WITH_ID_1_NOT_FOUND);

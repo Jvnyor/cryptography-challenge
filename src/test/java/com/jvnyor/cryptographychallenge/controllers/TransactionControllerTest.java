@@ -30,7 +30,6 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -68,7 +67,7 @@ class TransactionControllerTest {
     }
 
     @Test
-    void givenTransactionRequest_whenCreateTransaction_thenReturnTransactionResponse() throws Exception {
+    void givenTransactionRequestDTO_whenCreateTransaction_thenReturnTransactionResponse() throws Exception {
         when(transactionService.createTransaction(any(TransactionRequestDTO.class))).thenReturn(transactionResponseDTO);
 
         var result = mockMvc.perform(
@@ -86,7 +85,7 @@ class TransactionControllerTest {
 
     @MethodSource("provideParametersForCreateAndUpdateTest")
     @ParameterizedTest
-    void givenTransactionRequestWithInvalidValues_whenCreateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
+    void givenTransactionRequestDTOWithInvalidValues_whenCreateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
 
         var result = mockMvc.perform(
                 post(URL_TEMPLATE)
@@ -120,7 +119,7 @@ class TransactionControllerTest {
     }
 
     @Test
-    void givenTransactionRequest_whenCreateTransaction_butDatabaseRejectsOperation_thenExceptionIsThrown() throws Exception {
+    void givenTransactionRequestDTO_whenCreateTransaction_butDatabaseRejectsOperation_thenExceptionIsThrown() throws Exception {
         var databaseException = new RuntimeException("Database error");
 
         when(transactionService.createTransaction(any(TransactionRequestDTO.class))).thenThrow(databaseException);
@@ -144,7 +143,7 @@ class TransactionControllerTest {
     }
 
     @Test
-    void givenExistingIdAndTransactionRequest_whenUpdateTransaction_thenReturnTransactionResponse() throws Exception {
+    void givenExistingIdAndTransactionRequestDTO_whenUpdateTransaction_thenReturnTransactionResponse() throws Exception {
         when(transactionService.updateTransaction(anyLong(), any(TransactionRequestDTO.class))).thenReturn(transactionResponseDTO);
 
         var url = URL_TEMPLATE + "/1";
@@ -160,23 +159,9 @@ class TransactionControllerTest {
         verify(transactionService, times(1)).updateTransaction(anyLong(), any(TransactionRequestDTO.class));
     }
 
-    static Stream<Arguments> provideParametersForUpdateTest() {
-        final var validCreditCardToken = "validCreditCardToken";
-        final var validUserDocument = "validUserDocument";
-        final var invalidValue = -1;
-        final var emptyString = "";
-        return Stream.of(
-                Arguments.of(null, null, invalidValue),
-                Arguments.of(emptyString, emptyString, invalidValue),
-                Arguments.of(validUserDocument, null, invalidValue),
-                Arguments.of(null, validCreditCardToken, invalidValue)
-        );
-    }
-
-
     @MethodSource("provideParametersForCreateAndUpdateTest")
     @ParameterizedTest
-    void givenExistingIdAndTransactionRequestWithInvalidValues_whenUpdateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
+    void givenExistingIdAndTransactionRequestDTOWithInvalidValues_whenUpdateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
 
         var url = URL_TEMPLATE + "/1";
         var result = mockMvc.perform(
@@ -196,7 +181,7 @@ class TransactionControllerTest {
     }
 
     @Test
-    void givenNonExistentIdAndTransactionRequest_whenUpdateTransaction_thenExceptionIsThrown() throws Exception {
+    void givenNonExistentIdAndTransactionRequestDTO_whenUpdateTransaction_thenExceptionIsThrown() throws Exception {
         var transactionNotFoundException = new TransactionNotFoundException(1L);
         when(transactionService.updateTransaction(anyLong(), any(TransactionRequestDTO.class))).thenThrow(transactionNotFoundException);
 
@@ -220,7 +205,7 @@ class TransactionControllerTest {
     }
 
     @Test
-    void givenExistingIdAndTransactionRequest_whenUpdateTransaction_butDatabaseRejectsOperation_thenExceptionIsThrown() throws Exception {
+    void givenExistingIdAndTransactionRequestDTO_whenUpdateTransaction_butDatabaseRejectsOperation_thenExceptionIsThrown() throws Exception {
         var databaseException = new RuntimeException("Database error");
         when(transactionService.updateTransaction(anyLong(), any(TransactionRequestDTO.class))).thenThrow(databaseException);
 
