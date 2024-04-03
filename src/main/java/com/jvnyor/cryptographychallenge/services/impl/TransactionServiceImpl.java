@@ -1,8 +1,7 @@
 package com.jvnyor.cryptographychallenge.services.impl;
 
-import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionRequestDTO;
 import com.jvnyor.cryptographychallenge.dtos.TransactionResponseDTO;
-import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
 import com.jvnyor.cryptographychallenge.entities.Transaction;
 import com.jvnyor.cryptographychallenge.repositories.TransactionRepository;
 import com.jvnyor.cryptographychallenge.services.TransactionService;
@@ -30,50 +29,13 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public TransactionResponseDTO createTransaction(TransactionCreateDTO transactionCreateDTO) {
-        var transaction = transactionRepository.save(
-                new Transaction(
-                        null,
-                        textEncryptor.encrypt(transactionCreateDTO.userDocument()),
-                        textEncryptor.encrypt(transactionCreateDTO.creditCardToken()),
-                        transactionCreateDTO.value()
-                )
-        );
-        return getTransactionResponse(transaction);
+    public TransactionResponseDTO createTransaction(TransactionRequestDTO transactionRequestDTO) {
+        return createDTOFromEntity(transactionRepository.save(createOrUpdateEntityFromDTO(new Transaction(), transactionRequestDTO)));
     }
 
     @Override
-    public TransactionResponseDTO updateTransaction(long id, TransactionUpdateDTO transactionUpdateDTO) {
-        var existingTransaction = findById(id);
-        return getTransactionResponse(
-                updateTransactionFieldsIfChanged(transactionUpdateDTO, existingTransaction)
-                        .map(transactionRepository::save)
-                        .orElse(existingTransaction)
-        );
-    }
-
-    private Optional<Transaction> updateTransactionFieldsIfChanged(TransactionUpdateDTO transactionUpdateDTO, Transaction transaction) {
-        var updated = false;
-
-        var userDocument = transactionUpdateDTO.userDocument();
-        if (userDocument != null && (!userDocument.equals(textEncryptor.decrypt(transaction.getUserDocument())))) {
-            transaction.setUserDocument(textEncryptor.encrypt(userDocument));
-            updated = true;
-        }
-
-        var creditCardToken = transactionUpdateDTO.creditCardToken();
-        if (creditCardToken != null && (!creditCardToken.equals(textEncryptor.decrypt(transaction.getCreditCardToken())))) {
-            transaction.setCreditCardToken(textEncryptor.encrypt(creditCardToken));
-            updated = true;
-        }
-
-        var value = transactionUpdateDTO.value();
-        if (value != null && value != transaction.getValue()) {
-            transaction.setValue(value);
-            updated = true;
-        }
-
-        return updated ? Optional.of(transaction) : Optional.empty();
+    public TransactionResponseDTO updateTransaction(long id, TransactionRequestDTO transactionRequestDTO) {
+        return createDTOFromEntity(transactionRepository.save(createOrUpdateEntityFromDTO(findById(id), transactionRequestDTO)));
     }
 
     @Override
@@ -87,7 +49,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     @Override
     public TransactionResponseDTO getTransaction(long id) {
-        return getTransactionResponse(findById(id));
+        return createDTOFromEntity(findById(id));
     }
 
     private Transaction findById(long id) {
@@ -106,11 +68,18 @@ public class TransactionServiceImpl implements TransactionService {
     public Page<TransactionResponseDTO> getTransactions(Pageable pageable) {
         return Optional.of(transactionRepository.findAll(pageable))
                 .filter(Page::hasContent)
-                .map(page -> page.map(this::getTransactionResponse))
+                .map(page -> page.map(this::createDTOFromEntity))
                 .orElse(Page.empty());
     }
 
-    private TransactionResponseDTO getTransactionResponse(Transaction transaction) {
+    private Transaction createOrUpdateEntityFromDTO(Transaction transaction, TransactionRequestDTO transactionUpdateDTO) {
+        transaction.setUserDocument(textEncryptor.encrypt(transactionUpdateDTO.userDocument().trim()));
+        transaction.setCreditCardToken(textEncryptor.encrypt(transactionUpdateDTO.creditCardToken().trim()));
+        transaction.setValue(transactionUpdateDTO.value());
+        return transaction;
+    }
+
+    private TransactionResponseDTO createDTOFromEntity(Transaction transaction) {
         return new TransactionResponseDTO(
                 transaction.getId(),
                 textEncryptor.decrypt(transaction.getUserDocument()),

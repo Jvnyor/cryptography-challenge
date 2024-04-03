@@ -2,9 +2,8 @@ package com.jvnyor.cryptographychallenge.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jvnyor.cryptographychallenge.controllers.exceptions.dtos.ErrorResponseDTO;
-import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionRequestDTO;
 import com.jvnyor.cryptographychallenge.dtos.TransactionResponseDTO;
-import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
 import com.jvnyor.cryptographychallenge.services.TransactionService;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionDeletionException;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundException;
@@ -31,6 +30,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -48,23 +48,16 @@ class TransactionControllerTest {
     @MockBean
     private TransactionService transactionService;
 
-    private TransactionCreateDTO transactionCreateDTO;
-
-    private TransactionUpdateDTO transactionUpdateDTO;
+    private TransactionRequestDTO transactionRequestDTO;
 
     private TransactionResponseDTO transactionResponseDTO;
 
     @BeforeEach
     void setUp() {
-        this.transactionCreateDTO = new TransactionCreateDTO(
+        this.transactionRequestDTO = new TransactionRequestDTO(
                 "userDocument",
                 "creditCardToken",
                 1
-        );
-        this.transactionUpdateDTO = new TransactionUpdateDTO(
-                "userDocument",
-                "creditCardToken",
-                1D
         );
         this.transactionResponseDTO = new TransactionResponseDTO(
                 1,
@@ -76,26 +69,28 @@ class TransactionControllerTest {
 
     @Test
     void givenTransactionRequest_whenCreateTransaction_thenReturnTransactionResponse() throws Exception {
-        when(transactionService.createTransaction(any(TransactionCreateDTO.class))).thenReturn(transactionResponseDTO);
+        when(transactionService.createTransaction(any(TransactionRequestDTO.class))).thenReturn(transactionResponseDTO);
 
         var result = mockMvc.perform(
                 post(URL_TEMPLATE)
-                        .content(objectMapper.writeValueAsString(transactionCreateDTO))
+                        .content(objectMapper.writeValueAsString(transactionRequestDTO))
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isCreated());
         result.andExpect(header().string("Location", containsString("/v1/transactions/1")));
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponseDTO)));
+
+        verify(transactionService, times(1)).createTransaction(any(TransactionRequestDTO.class));
     }
 
-    @MethodSource("provideParametersForCreateTest")
+    @MethodSource("provideParametersForCreateAndUpdateTest")
     @ParameterizedTest
     void givenTransactionRequestWithInvalidValues_whenCreateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
 
         var result = mockMvc.perform(
                 post(URL_TEMPLATE)
-                        .content(objectMapper.writeValueAsString(new TransactionCreateDTO(userDocument, creditCardToken, value)))
+                        .content(objectMapper.writeValueAsString(new TransactionRequestDTO(userDocument, creditCardToken, value)))
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -105,9 +100,11 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.exceptionName").value(MethodArgumentNotValidException.class.getSimpleName()));
         result.andExpect(jsonPath("$.status").value(400));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(0)).createTransaction(any(TransactionRequestDTO.class));
     }
 
-    static Stream<Arguments> provideParametersForCreateTest() {
+    static Stream<Arguments> provideParametersForCreateAndUpdateTest() {
         final var validCreditCardToken = "validCreditCardToken";
         final var validUserDocument = "validUserDocument";
         final var validValue = 1;
@@ -126,11 +123,11 @@ class TransactionControllerTest {
     void givenTransactionRequest_whenCreateTransaction_butDatabaseRejectsOperation_thenExceptionIsThrown() throws Exception {
         var databaseException = new RuntimeException("Database error");
 
-        when(transactionService.createTransaction(any(TransactionCreateDTO.class))).thenThrow(databaseException);
+        when(transactionService.createTransaction(any(TransactionRequestDTO.class))).thenThrow(databaseException);
 
         var result = mockMvc.perform(
                 post(URL_TEMPLATE)
-                        .content(objectMapper.writeValueAsString(transactionCreateDTO))
+                        .content(objectMapper.writeValueAsString(transactionRequestDTO))
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -142,22 +139,27 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));
         result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(1)).createTransaction(any(TransactionRequestDTO.class));
     }
 
     @Test
     void givenExistingIdAndTransactionRequest_whenUpdateTransaction_thenReturnTransactionResponse() throws Exception {
-        when(transactionService.updateTransaction(anyLong(), any(TransactionUpdateDTO.class))).thenReturn(transactionResponseDTO);
+        when(transactionService.updateTransaction(anyLong(), any(TransactionRequestDTO.class))).thenReturn(transactionResponseDTO);
 
         var url = URL_TEMPLATE + "/1";
         var result = mockMvc.perform(
                 put(url)
-                        .content(objectMapper.writeValueAsString(transactionUpdateDTO))
+                        .content(objectMapper.writeValueAsString(transactionRequestDTO))
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk());
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponseDTO)));
+
+        verify(transactionService, times(1)).updateTransaction(anyLong(), any(TransactionRequestDTO.class));
     }
+
     static Stream<Arguments> provideParametersForUpdateTest() {
         final var validCreditCardToken = "validCreditCardToken";
         final var validUserDocument = "validUserDocument";
@@ -172,34 +174,36 @@ class TransactionControllerTest {
     }
 
 
-    @MethodSource("provideParametersForUpdateTest")
+    @MethodSource("provideParametersForCreateAndUpdateTest")
     @ParameterizedTest
     void givenExistingIdAndTransactionRequestWithInvalidValues_whenUpdateTransaction_thenExceptionIsThrown(String userDocument, String creditCardToken, double value) throws Exception {
 
         var url = URL_TEMPLATE + "/1";
         var result = mockMvc.perform(
                 put(url)
-                        .content(objectMapper.writeValueAsString(new TransactionUpdateDTO(userDocument, creditCardToken, value)))
+                        .content(objectMapper.writeValueAsString(new TransactionRequestDTO(userDocument, creditCardToken, value)))
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isBadRequest());
-        result.andExpect(jsonPath("$.message").value("value: must be greater than 0"));
+        result.andExpect(jsonPath("$.message").exists());
         result.andExpect(jsonPath("$.path").value(url));
         result.andExpect(jsonPath("$.exceptionName").value(MethodArgumentNotValidException.class.getSimpleName()));
         result.andExpect(jsonPath("$.status").value(400));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(0)).updateTransaction(anyLong(), any(TransactionRequestDTO.class));
     }
 
     @Test
     void givenNonExistentIdAndTransactionRequest_whenUpdateTransaction_thenExceptionIsThrown() throws Exception {
         var transactionNotFoundException = new TransactionNotFoundException(1L);
-        when(transactionService.updateTransaction(anyLong(), any(TransactionUpdateDTO.class))).thenThrow(transactionNotFoundException);
+        when(transactionService.updateTransaction(anyLong(), any(TransactionRequestDTO.class))).thenThrow(transactionNotFoundException);
 
         var url = URL_TEMPLATE + "/1";
         var result = mockMvc.perform(
                 put(url)
-                        .content(objectMapper.writeValueAsString(transactionUpdateDTO))
+                        .content(objectMapper.writeValueAsString(transactionRequestDTO))
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -211,17 +215,19 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));
         result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(1)).updateTransaction(anyLong(), any(TransactionRequestDTO.class));
     }
 
     @Test
     void givenExistingIdAndTransactionRequest_whenUpdateTransaction_butDatabaseRejectsOperation_thenExceptionIsThrown() throws Exception {
         var databaseException = new RuntimeException("Database error");
-        when(transactionService.updateTransaction(anyLong(), any(TransactionUpdateDTO.class))).thenThrow(databaseException);
+        when(transactionService.updateTransaction(anyLong(), any(TransactionRequestDTO.class))).thenThrow(databaseException);
 
         var url = URL_TEMPLATE + "/1";
         var result = mockMvc.perform(
                 put(url)
-                        .content(objectMapper.writeValueAsString(transactionUpdateDTO))
+                        .content(objectMapper.writeValueAsString(transactionRequestDTO))
                         .accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -233,6 +239,8 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));
         result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(1)).updateTransaction(anyLong(), any(TransactionRequestDTO.class));
     }
 
     @Test
@@ -246,6 +254,8 @@ class TransactionControllerTest {
                         .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isNoContent());
+
+        verify(transactionService, times(1)).deleteTransaction(anyLong());
     }
 
     @Test
@@ -267,6 +277,8 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));
         result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(1)).deleteTransaction(anyLong());
     }
 
     @Test
@@ -288,6 +300,8 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));
         result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(1)).deleteTransaction(anyLong());
     }
 
     @Test
@@ -309,6 +323,8 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));
         result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(1)).deleteTransaction(anyLong());
     }
 
     @Test
@@ -323,6 +339,8 @@ class TransactionControllerTest {
 
         result.andExpect(status().isOk());
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponseDTO)));
+
+        verify(transactionService, times(1)).getTransaction(anyLong());
     }
 
     @Test
@@ -344,6 +362,8 @@ class TransactionControllerTest {
         result.andExpect(jsonPath("$.exceptionName").value(errorResponseMock.exceptionName()));
         result.andExpect(jsonPath("$.status").value(errorResponseMock.status()));
         result.andExpect(jsonPath("$.timestamp").exists());
+
+        verify(transactionService, times(1)).getTransaction(anyLong());
     }
 
     @Test
@@ -359,6 +379,8 @@ class TransactionControllerTest {
 
         result.andExpect(status().isOk());
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponsePage)));
+
+        verify(transactionService, times(1)).getTransactions(any(PageRequest.class));
     }
 
     @Test
@@ -373,6 +395,8 @@ class TransactionControllerTest {
 
         result.andExpect(status().isOk());
         result.andExpect(MockMvcResultMatchers.content().json(objectMapper.writeValueAsString(transactionResponsePage)));
+
+        verify(transactionService, times(1)).getTransactions(any(PageRequest.class));
     }
 
     private ErrorResponseDTO getErrorResponseMock(Exception exception, String path, int status) {

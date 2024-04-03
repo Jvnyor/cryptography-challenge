@@ -1,7 +1,6 @@
 package com.jvnyor.cryptographychallenge.services;
 
-import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
-import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionRequestDTO;
 import com.jvnyor.cryptographychallenge.entities.Transaction;
 import com.jvnyor.cryptographychallenge.repositories.TransactionRepository;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionDeletionException;
@@ -11,9 +10,6 @@ import org.jasypt.util.text.AES256TextEncryptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -23,7 +19,6 @@ import org.springframework.data.domain.PageRequest;
 
 import java.util.Collections;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,23 +47,16 @@ class TransactionServiceTest {
     @InjectMocks
     private TransactionServiceImpl transactionService;
 
-    private TransactionCreateDTO transactionCreateDTO;
-
-    private TransactionUpdateDTO transactionUpdateDTO;
+    private TransactionRequestDTO transactionRequestDTO;
 
     private Transaction transaction;
 
     @BeforeEach
     void setUp() {
-        this.transactionCreateDTO = new TransactionCreateDTO(
+        this.transactionRequestDTO = new TransactionRequestDTO(
                 "userDocument",
                 "creditCardToken",
                 1
-        );
-        this.transactionUpdateDTO = new TransactionUpdateDTO(
-                "userDocument1",
-                "creditCardToken1",
-                1D
         );
         this.transaction = new Transaction(
                 1L,
@@ -84,7 +72,7 @@ class TransactionServiceTest {
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
         when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
 
-        var transactionResponse = transactionService.createTransaction(transactionCreateDTO);
+        var transactionResponse = transactionService.createTransaction(transactionRequestDTO);
 
         assertAll("Return transaction response with decrypted fields",
                 () -> assertEquals(transaction.getId(), transactionResponse.id()),
@@ -103,7 +91,7 @@ class TransactionServiceTest {
         when(textEncryptor.encrypt(anyString())).thenReturn(ENCRYPTED_MESSAGE_NOT_UPDATED);
         when(transactionRepository.save(any(Transaction.class))).thenThrow(DataIntegrityViolationException.class);
 
-        assertThrows(DataIntegrityViolationException.class, () -> transactionService.createTransaction(transactionCreateDTO));
+        assertThrows(DataIntegrityViolationException.class, () -> transactionService.createTransaction(transactionRequestDTO));
         verify(textEncryptor, times(2)).encrypt(anyString());
         verify(transactionRepository, times(1)).save(any(Transaction.class));
     }
@@ -115,7 +103,7 @@ class TransactionServiceTest {
         when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
         when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
 
-        var transactionResponse = transactionService.updateTransaction(1L, transactionUpdateDTO);
+        var transactionResponse = transactionService.updateTransaction(1L, transactionRequestDTO);
 
         assertAll("Return transaction response with decrypted fields",
                 () -> assertEquals(transaction.getId(), transactionResponse.id()),
@@ -127,109 +115,14 @@ class TransactionServiceTest {
         verify(transactionRepository, times(1)).findById(anyLong());
         verify(textEncryptor, times(2)).encrypt(anyString());
         verify(transactionRepository, times(1)).save(any(Transaction.class));
-        verify(textEncryptor, times(4)).decrypt(anyString());
-    }
-
-    @Test
-    void givenExistingIdAndTransactionUpdateDTOWithNull_whenUpdateTransaction_thenReturnTransactionResponse_butWithoutPersistenceInvocation() {
-        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(transaction));
-        when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
-
-        var transactionResponse = transactionService.updateTransaction(1L, new TransactionUpdateDTO(null, null, null));
-
-        assertAll("Return transaction response with decrypted fields",
-                () -> assertEquals(transaction.getId(), transactionResponse.id()),
-                () -> assertEquals(DECRYPTED_MESSAGE, transactionResponse.userDocument()),
-                () -> assertEquals(DECRYPTED_MESSAGE, transactionResponse.creditCardToken()),
-                () -> assertEquals(transaction.getValue(), transactionResponse.value())
-        );
-
-        verify(transactionRepository, times(1)).findById(anyLong());
-        verify(textEncryptor, times(0)).encrypt(anyString());
-        verify(transactionRepository, times(0)).save(any(Transaction.class));
         verify(textEncryptor, times(2)).decrypt(anyString());
-    }
-
-    @Test
-    void givenExistingIdAndTransactionUpdateDTOWithSameOfExistingTransactionValues_whenUpdateTransaction_thenReturnTransactionResponse_butWithoutPersistenceInvocation() {
-        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(transaction));
-        when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
-        when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
-
-        var transactionResponse = transactionService.updateTransaction(1L, new TransactionUpdateDTO(DECRYPTED_MESSAGE, DECRYPTED_MESSAGE, transaction.getValue()));
-
-        assertAll("Return transaction response with decrypted fields",
-                () -> assertEquals(transaction.getId(), transactionResponse.id()),
-                () -> assertEquals(DECRYPTED_MESSAGE, transactionResponse.userDocument()),
-                () -> assertEquals(DECRYPTED_MESSAGE, transactionResponse.creditCardToken()),
-                () -> assertEquals(transaction.getValue(), transactionResponse.value())
-        );
-
-        verify(transactionRepository, times(1)).findById(anyLong());
-        verify(textEncryptor, times(0)).encrypt(anyString());
-        verify(transactionRepository, times(0)).save(any(Transaction.class));
-        verify(textEncryptor, times(4)).decrypt(anyString());
-    }
-
-    @MethodSource("provideParametersForTestWithUserDocumentAndCreditCardTokenFieldsValidation")
-    @ParameterizedTest
-    void givenExistingIdAndTransactionUpdateDTOWithUserDocumentAndCreditCardTokenNullAndUpdatedValue_whenUpdateTransaction_thenReturnTransactionResponse(String userDocument, String creditCardToken) {
-        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(transaction));
-        when(textEncryptor.encrypt(anyString())).thenReturn(ENCRYPTED_MESSAGE_UPDATED);
-        when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
-        when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
-
-        var transactionResponse1 = transactionService.updateTransaction(1L, new TransactionUpdateDTO(userDocument, creditCardToken, transaction.getValue()));
-
-        assertAll("Return transaction response with decrypted fields",
-                () -> assertEquals(transaction.getId(), transactionResponse1.id()),
-                () -> assertEquals(DECRYPTED_MESSAGE, transactionResponse1.userDocument()),
-                () -> assertEquals(DECRYPTED_MESSAGE, transactionResponse1.creditCardToken()),
-                () -> assertEquals(transaction.getValue(), transactionResponse1.value())
-        );
-
-        verify(transactionRepository, times(1)).findById(anyLong());
-        verify(textEncryptor, times(1)).encrypt(anyString());
-        verify(transactionRepository, times(1)).save(any(Transaction.class));
-        verify(textEncryptor, times(3)).decrypt(anyString());
-    }
-
-    @Test
-    void givenExistingIdAndTransactionUpdateDTOWithOtherFieldsNullAndValidValueToUpdate_whenUpdateTransaction_thenReturnTransactionResponse() {
-        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(transaction));
-        when(transactionRepository.save(any(Transaction.class))).thenReturn(transaction);
-        when(textEncryptor.decrypt(anyString())).thenReturn(DECRYPTED_MESSAGE);
-
-        var transactionResponse1 = transactionService.updateTransaction(1L, new TransactionUpdateDTO(null, null, 2D));
-
-        assertAll("Return transaction response with decrypted fields",
-                () -> assertEquals(transaction.getId(), transactionResponse1.id()),
-                () -> assertEquals(DECRYPTED_MESSAGE, transactionResponse1.userDocument()),
-                () -> assertEquals(DECRYPTED_MESSAGE, transactionResponse1.creditCardToken()),
-                () -> assertEquals(transaction.getValue(), transactionResponse1.value())
-        );
-
-        verify(transactionRepository, times(1)).findById(anyLong());
-        verify(textEncryptor, times(0)).encrypt(anyString());
-        verify(transactionRepository, times(1)).save(any(Transaction.class));
-        verify(textEncryptor, times(2)).decrypt(anyString());
-    }
-
-    static Stream<Arguments> provideParametersForTestWithUserDocumentAndCreditCardTokenFieldsValidation() {
-        final var validCreditCardToken = "creditCardToken1";
-        final var validUserDocument = "userDocument1";
-        final var validValue = 1;
-        return Stream.of(
-                Arguments.of(null, validCreditCardToken, validValue),
-                Arguments.of(validUserDocument, null, validValue)
-        );
     }
 
     @Test
     void givenNonExistentIdAndTransactionUpdateDTO_whenUpdateTransaction_thenExceptionIsThrown() {
         when(transactionRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        assertThrows(TransactionNotFoundException.class, () -> transactionService.updateTransaction(1L, transactionUpdateDTO), TRANSACTION_WITH_ID_1_NOT_FOUND);
+        assertThrows(TransactionNotFoundException.class, () -> transactionService.updateTransaction(1L, transactionRequestDTO), TRANSACTION_WITH_ID_1_NOT_FOUND);
 
         verify(transactionRepository, times(1)).findById(anyLong());
         verify(textEncryptor, times(0)).encrypt(anyString());
@@ -243,7 +136,7 @@ class TransactionServiceTest {
         when(textEncryptor.encrypt(any(String.class))).thenReturn(ENCRYPTED_MESSAGE_UPDATED);
         when(transactionRepository.save(any(Transaction.class))).thenThrow(DataIntegrityViolationException.class);
 
-        assertThrows(DataIntegrityViolationException.class, () -> transactionService.updateTransaction(1L, transactionUpdateDTO));
+        assertThrows(DataIntegrityViolationException.class, () -> transactionService.updateTransaction(1L, transactionRequestDTO));
 
         verify(transactionRepository, times(1)).findById(anyLong());
         verify(textEncryptor, times(2)).encrypt(any(String.class));

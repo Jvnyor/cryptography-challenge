@@ -1,7 +1,6 @@
 package com.jvnyor.cryptographychallenge.controllers;
 
-import com.jvnyor.cryptographychallenge.dtos.TransactionCreateDTO;
-import com.jvnyor.cryptographychallenge.dtos.TransactionUpdateDTO;
+import com.jvnyor.cryptographychallenge.dtos.TransactionRequestDTO;
 import com.jvnyor.cryptographychallenge.dtos.TransactionResponseDTO;
 import com.jvnyor.cryptographychallenge.services.TransactionService;
 import jakarta.validation.Valid;
@@ -25,8 +24,8 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<TransactionResponseDTO> createTransaction(@RequestBody @Valid TransactionCreateDTO transactionCreateDTO) {
-        var transaction = transactionService.createTransaction(transactionCreateDTO);
+    public ResponseEntity<TransactionResponseDTO> createTransaction(@RequestBody @Valid TransactionRequestDTO transactionRequestDTO) {
+        var transaction = transactionService.createTransaction(transactionRequestDTO);
         return ResponseEntity
                 .created(ServletUriComponentsBuilder
                         .fromCurrentRequest()
@@ -37,8 +36,8 @@ public class TransactionController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<TransactionResponseDTO> updateTransaction(@PathVariable Long id, @RequestBody @Valid TransactionUpdateDTO transactionUpdateDTO) {
-        return ResponseEntity.ok(transactionService.updateTransaction(id, transactionUpdateDTO));
+    public ResponseEntity<TransactionResponseDTO> updateTransaction(@PathVariable Long id, @RequestBody @Valid TransactionRequestDTO transactionRequestDTO) {
+        return ResponseEntity.ok(transactionService.updateTransaction(id, transactionRequestDTO));
     }
 
     @DeleteMapping("/{id}")
