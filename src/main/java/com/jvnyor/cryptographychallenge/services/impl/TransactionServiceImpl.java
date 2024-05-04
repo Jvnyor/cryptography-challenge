@@ -8,6 +8,8 @@ import com.jvnyor.cryptographychallenge.services.TransactionService;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionDeletionException;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundException;
 import org.jasypt.util.text.AES256TextEncryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,8 @@ import java.util.Optional;
 @Transactional
 @Service
 public class TransactionServiceImpl implements TransactionService {
+
+    private final Logger log = LoggerFactory.getLogger(TransactionServiceImpl.class);
 
     private final TransactionRepository transactionRepository;
 
@@ -30,18 +34,26 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public TransactionResponseDTO createTransaction(TransactionRequestDTO transactionRequestDTO) {
-        return createDTOFromEntity(transactionRepository.save(createOrUpdateEntityFromDTO(new Transaction(), transactionRequestDTO)));
+        log.info("Creating transaction");
+        Transaction transaction = transactionRepository.save(createOrUpdateEntityFromDTO(new Transaction(), transactionRequestDTO));
+        log.debug("Transaction created: {}", transaction);
+        return createDTOFromEntity(transaction);
     }
 
     @Override
     public TransactionResponseDTO updateTransaction(long id, TransactionRequestDTO transactionRequestDTO) {
-        return createDTOFromEntity(transactionRepository.save(createOrUpdateEntityFromDTO(findById(id), transactionRequestDTO)));
+        log.info("Updating transaction with id {}", id);
+        Transaction transaction = transactionRepository.save(createOrUpdateEntityFromDTO(findById(id), transactionRequestDTO));
+        log.debug("Transaction updated: {}", transaction);
+        return createDTOFromEntity(transaction);
     }
 
     @Override
     public void deleteTransaction(long id) {
+        log.info("Deleting transaction with id {}", id);
         int deleteByID = transactionRepository.deleteByID(existsById(id));
         if (deleteByID == 0) {
+            log.error("Error occurred while deleting Transaction with id {}", id);
             throw new TransactionDeletionException(id);
         }
     }
@@ -49,6 +61,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     @Override
     public TransactionResponseDTO getTransaction(long id) {
+        log.info("Getting transaction with id {}", id);
         return createDTOFromEntity(findById(id));
     }
 
@@ -66,6 +79,7 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     @Override
     public Page<TransactionResponseDTO> getTransactions(Pageable pageable) {
+        log.info("Getting transactions");
         return Optional.of(transactionRepository.findAll(pageable))
                 .filter(Page::hasContent)
                 .map(page -> page.map(this::createDTOFromEntity))
