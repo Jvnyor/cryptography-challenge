@@ -7,9 +7,12 @@ import com.jvnyor.cryptographychallenge.repositories.TransactionRepository;
 import com.jvnyor.cryptographychallenge.services.TransactionService;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionDeletionException;
 import com.jvnyor.cryptographychallenge.services.exceptions.TransactionNotFoundException;
+import com.jvnyor.cryptographychallenge.util.CacheConstants;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -32,6 +35,7 @@ public class TransactionServiceImpl implements TransactionService {
         this.textEncryptor = textEncryptor;
     }
 
+    @CacheEvict(cacheNames = {CacheConstants.GET_TRANSACTION, CacheConstants.GET_TRANSACTIONS}, allEntries = true)
     @Override
     public TransactionResponseDTO createTransaction(TransactionRequestDTO transactionRequestDTO) {
         log.info("Creating transaction");
@@ -40,6 +44,7 @@ public class TransactionServiceImpl implements TransactionService {
         return createDTOFromEntity(transaction);
     }
 
+    @CacheEvict(cacheNames = {CacheConstants.GET_TRANSACTION, CacheConstants.GET_TRANSACTIONS}, allEntries = true)
     @Override
     public TransactionResponseDTO updateTransaction(long id, TransactionRequestDTO transactionRequestDTO) {
         log.info("Updating transaction with id {}", id);
@@ -48,6 +53,7 @@ public class TransactionServiceImpl implements TransactionService {
         return createDTOFromEntity(transaction);
     }
 
+    @CacheEvict(cacheNames = {CacheConstants.GET_TRANSACTION, CacheConstants.GET_TRANSACTIONS}, allEntries = true)
     @Override
     public void deleteTransaction(long id) {
         log.info("Deleting transaction with id {}", id);
@@ -58,6 +64,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
+    @Cacheable(cacheNames = CacheConstants.GET_TRANSACTION, key = "{#id}")
     @Transactional(readOnly = true)
     @Override
     public TransactionResponseDTO getTransaction(long id) {
@@ -76,6 +83,10 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new TransactionNotFoundException(id));
     }
 
+    @Cacheable(cacheNames = CacheConstants.GET_TRANSACTIONS,
+            key = "{#pageable.getPageNumber(), " +
+                    "#pageable.getPageSize()," +
+                    "#pageable.getSort().hashCode()}")
     @Transactional(readOnly = true)
     @Override
     public Page<TransactionResponseDTO> getTransactions(Pageable pageable) {
