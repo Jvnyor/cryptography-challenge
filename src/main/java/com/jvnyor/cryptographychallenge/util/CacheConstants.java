@@ -5,6 +5,6 @@ public class CacheConstants {
     private CacheConstants() {
     }
 
-    public static final String GET_TRANSACTION = "gt";
-    public static final String GET_TRANSACTIONS = "gts";
+    public static final String GET_TRANSACTION = "CacheGetTransaction";
+    public static final String GET_TRANSACTIONS = "CacheGetTransactions";
 }

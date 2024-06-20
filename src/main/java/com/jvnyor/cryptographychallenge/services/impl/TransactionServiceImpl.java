@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+import static com.jvnyor.cryptographychallenge.config.CacheConfig.KEY_GENERATOR;
+
 @Transactional
 @Service
 public class TransactionServiceImpl implements TransactionService {
@@ -64,7 +66,7 @@ public class TransactionServiceImpl implements TransactionService {
         }
     }
 
-    @Cacheable(cacheNames = CacheConstants.GET_TRANSACTION, key = "{#id}")
+    @Cacheable(cacheNames = CacheConstants.GET_TRANSACTION, keyGenerator = KEY_GENERATOR)
     @Transactional(readOnly = true)
     @Override
     public TransactionResponseDTO getTransaction(long id) {
@@ -83,10 +85,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new TransactionNotFoundException(id));
     }
 
-    @Cacheable(cacheNames = CacheConstants.GET_TRANSACTIONS,
-            key = "{#pageable.getPageNumber(), " +
-                    "#pageable.getPageSize()," +
-                    "#pageable.getSort().hashCode()}")
+    @Cacheable(cacheNames = CacheConstants.GET_TRANSACTIONS, keyGenerator = KEY_GENERATOR)
     @Transactional(readOnly = true)
     @Override
     public Page<TransactionResponseDTO> getTransactions(Pageable pageable) {
