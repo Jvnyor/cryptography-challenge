@@ -12,6 +12,4 @@ jobs:
       - uses: actions/setup-java@v1
         with:
           java-version: 17
-      - run: mvn clean install
-      - run: mvn clean package
       - run: mvn clean -B test
