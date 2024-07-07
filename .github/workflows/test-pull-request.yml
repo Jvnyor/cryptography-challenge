@@ -1,4 +1,4 @@
-name: Java Continuous Integration
+name: Test Pull Request
 
 permissions:
   contents: read
@@ -18,11 +18,3 @@ jobs:
           distribution: 'oracle'
           java-version: 17
       - run: mvn clean -B test
-
-  dependency-review:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
