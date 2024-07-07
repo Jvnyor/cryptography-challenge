@@ -11,18 +11,19 @@ jobs:
   test_pull_request:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout Repository'
+      - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: 'Run Unit Tests'
+      - name: Run Unit Tests
         uses: actions/setup-java@v4
         with:
+          distribution: 'oracle'
           java-version: 17
       - run: mvn clean -B test
 
   dependency-review:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout Repository'
+      - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: 'Dependency Review'
+      - name: Dependency Review
         uses: actions/dependency-review-action@v4
