@@ -1,9 +1,12 @@
-name: Test Pull Request
+name: Tests check
 
 permissions:
   contents: read
 
 on:
+  workflow_dispatch:
+  push:
+    branches: [ "master" ]
   pull_request:
     branches: [master]
 
@@ -17,4 +20,4 @@ jobs:
         with:
           distribution: 'oracle'
           java-version: 17
-      - run: mvn clean -B test
+      - run: mvn -T 5 clean -B test
